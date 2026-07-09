@@ -75,7 +75,3 @@ lucianno
 ```
 
 Have fun!
-
-### License
-
-MIT
