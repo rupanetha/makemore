@@ -74,4 +74,4 @@ ebokun
 lucianno
 ```
 
-Have fun!
+Thank you!
