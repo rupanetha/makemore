@@ -58,3 +58,53 @@ for i in range(27):
         plt.text(j, i, N[i,j].item(), ha="center", va="top", color='gray')
 plt.axis('off');
 
+
+# sampling
+
+p = N[0].float()
+p = p/p.sum()
+p
+
+g = torch.Generator().manual_seed(2147483647)
+ix = torch.multinomial(p, num_samples = 1, replacement=True, generator=g).item()
+itos[ix]
+
+g = torch.Generator().manual_seed(2147483647)
+p = torch.rand(3, generator=g)
+p = p/p.sum()
+p
+
+torch.multinomial(p, num_samples=100, replacement=True, generator=g)
+
+g = torch.Generator().manual_seed(2147483647)
+
+for i in range(20):
+    
+    out = []
+    ix = 0
+    while True:
+        p = N[ix].float()
+        p = p/p.sum()
+        ix = torch.multinomial(p, num_samples=1, replacement=True, generator=g).item()
+        out.append(itos[ix])
+        if ix == 0:
+            break
+    print(''.join(out))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
