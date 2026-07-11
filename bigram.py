@@ -188,6 +188,67 @@ print(f'{nll=}')
 print(f'{nll/n}') 
 
 
+######################################### 
+### neural network approach
+######################################### 
+
+# create the training set of bigrams (x - inputs, y - labels)
+
+xs, ys = [], []
+
+for w in words [:1]:
+    chs = ['.'] + list(w) + ['.']
+    for ch1, ch2 in zip(chs, chs[1:]):
+        ix1 = stoi[ch1]
+        ix2 = stoi[ch2]
+        print(ch1, ch2)
+        xs.append(ix1)
+        ys.append(ix2)
+        
+xs = torch.tensor(xs)
+ys = torch.tensor(ys)
+    
+xs
+# tensor([ 0,  5, 13, 13,  1])
+ys
+# tensor([ 5, 13, 13,  1,  0]) 
+    
+import torch.nn.functional as F 
+xenc = F.one_hot(xs, num_classes=27).float()
+xenc   
+    
+plt.imshow(xenc) 
+    
+    
+W = torch.randn((27,27))   
+xenc @ W #(@ - matrix multiplication)
+
+# transforming neural network into probabilities
+
+logits = xenc @ W # log-counts
+counts = logits.exp()
+probs = counts / counts.sum(1, keepdim=True)
+probs
+    
+probs[0]
+
+probs[0].shape
+
+probs[0].sum()
+    
+    
+    
+
+
+    
+    
+
+
+
+
+
+
+
 
 
 
