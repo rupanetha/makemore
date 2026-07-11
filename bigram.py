@@ -91,7 +91,7 @@ torch.multinomial(p, num_samples=100, replacement=True, generator=g)
 ### Probability Matrix and sampling
 ######################################### 
 
-P = N.float()
+P = (N+1).float() # model smoothening (N+1) to give uniform results and avoid -inf
 P /= P.sum(1, keepdim=True)
 
 
@@ -141,25 +141,6 @@ nll = -log_likelihood
 print(f'{nll=}')
 print(f'{nll/n}')        
         
-### .e: 0.0478 -3.0408
-### em: 0.0377 -3.2793
-### mm: 0.0253 -3.6772
-### ma: 0.3899 -0.9418
-### a.: 0.1960 -1.6299
-### .o: 0.0123 -4.3982
-### ol: 0.0780 -2.5508
-### li: 0.1777 -1.7278
-### iv: 0.0152 -4.1867
-### vi: 0.3541 -1.0383
-### ia: 0.1381 -1.9796
-### a.: 0.1960 -1.6299
-###.a: 0.1377 -1.9829
-### av: 0.0246 -3.7045
-### va: 0.2495 -1.3882
-### a.: 0.1960 -1.6299
-### log_likelihood=tensor(-38.7856)
-### nll=tensor(38.7856)
-### 2.424102306365967
 
 
 # lossfunction of total set
@@ -182,10 +163,6 @@ print(f'{log_likelihood=}')
 nll = -log_likelihood
 print(f'{nll=}')
 print(f'{nll/n}')      
-        
-### log_likelihood=tensor(-559891.7500)
-### nll=tensor(559891.7500)
-### 2.454094171524048
 
 
 # test for any particular word
@@ -209,17 +186,6 @@ print(f'{log_likelihood=}')
 nll = -log_likelihood
 print(f'{nll=}')
 print(f'{nll/n}') 
-
-### .r: 0.0512 -2.9727
-### ru: 0.0198 -3.9199
-### up: 0.0051 -5.2778
-### pa: 0.2037 -1.5911
-### a.: 0.1960 -1.6299
-### log_likelihood=tensor(-15.3914)
-### nll=tensor(15.3914)
-### 3.07827091217041
-
-
 
 
 
