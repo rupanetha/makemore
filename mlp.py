@@ -71,17 +71,31 @@ parameters = [C, W1, b1, W2, b2]
 sum(p.nelement() for p in parameters) # number of parameters in total
 # 3481
 
-emb = C[X] # (32, 3, 2)
-h = torch.tanh(emb.view(-1, 6) @ W1 + b1) # (32, 100)
-logits = h @ W2 +b2 # (32, 27)
-counts = logits.exp()
-prob = counts / counts.sum(1, keepdims = True)
-loss = -prob[torch.arange(32), Y].log().mean()
-loss
-# tensor(17.7697)
 
+for p in parameters:
+    p.requires_grad = True
 
-
+for _ in range(100):
+    # forward pass
+    emb = C[X] # (32, 3, 2)
+    h = torch.tanh(emb.view(-1, 6) @ W1 + b1) # (32, 100)
+    logits = h @ W2 +b2 # (32, 27)
+    # counts = logits.exp()
+    # prob = counts / counts.sum(1, keepdims = True)
+    # loss = -prob[torch.arange(32), Y].log().mean()
+    loss = F.cross_entropy(logits, Y)
+    loss
+    # tensor(17.7697)
+    
+    # backward pass
+    for p in parameters:
+        p.grad = None
+    loss.backward()
+    
+    # update
+    for p in parameters:
+        p.data += -0.1 * p.grad
+print(loss.item())
 
 
 
