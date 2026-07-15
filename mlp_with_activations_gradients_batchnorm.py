@@ -60,12 +60,12 @@ Xte, Yte = build_dataset(words[n2:])       # 10%
 # MLP revisited
 
 n_embd = 10 # the dimensionality of the character embedding vectors
-n_hidden = 200 # the number of neurons in the hidden layer of MLP
+n_hidden = 200 # the number of neurons in the hidden layer of the MLP
 
-g = torch.Generator().manual_seed(2147483647)
-C = torch.randn((vocab_size, n_embd),             generator=g)
+g = torch.Generator().manual_seed(2147483647) # for reproducibility
+C  = torch.randn((vocab_size, n_embd),            generator=g)
 W1 = torch.randn((n_embd * block_size, n_hidden), generator=g) * (5/3)/((n_embd * block_size)**0.5) #* 0.2
-#b1 = torch.randn(n_hidden,                       generator=g) * 0.01
+#b1 = torch.randn(n_hidden,                        generator=g) * 0.01
 W2 = torch.randn((n_hidden, vocab_size),          generator=g) * 0.01
 b2 = torch.randn(vocab_size,                      generator=g) * 0
 
@@ -93,47 +93,44 @@ batch_size = 32
 lossi = []
 
 for i in range(max_steps):
-    
-    # minibatch construct
-    ix = torch.randint(0, Xtr.shape[0], (batch_size,), generator=g)
-    Xb, Yb = Xtr[ix], Ytr[ix] # batch X,Y
-    
-    # forward pass
-    emb = C[Xb] # embed the characters into vectors
-    embcat = emb.view(emb.shape[0], -1) # concatenate the vectors
-    
-    # linear layer
-    hpreact = embcat @ W1 #+b1 #hidden layer pre-activation
-    
-    # BatchNorm layer
-    #--------------------------------------------------------------------------
-    bnmeani = hpreact.mean(0, keepdim=True)
-    bnstdi = hpreact.std(0, keepdim=True)
-    hpreact = bngain * (hpreact - bnmeani) / bnstdi + bnbias
-    with torch.no_grad():
-        bnmean_running = 0.999 * bnmean_running + 0.001 * bnmeani
-        bnstd_running = 0.999 * bnstd_running + 0.001 * bnstdi
-    
-    # Non-linearity
-    #--------------------------------------------------------------------------
-    h = torch.tanh(hpreact) # hidden layer
-    logits = h @ W2 + b2 # output layer
-    loss = F.cross_entropy(logits, Yb) # loss function
-    
-    # backward pass
-    for p in parameters:
-        p.grad = None
-    loss.backward() 
-    
-    # update
-    lr = 0.1 if i < 100000 else 0.01 # step learning rate decay
-    for p in parameters:
-        p.data += -lr * p.grad
-        
-    # track stats
-    if i % 10000 == 0: # print every once in a while
-        print(f'{i:7d}/{max_steps:7d}: {loss.item():.4f}')
-    lossi.append(loss.log10().item())
+  
+  # minibatch construct
+  ix = torch.randint(0, Xtr.shape[0], (batch_size,), generator=g)
+  Xb, Yb = Xtr[ix], Ytr[ix] # batch X,Y
+  
+  # forward pass
+  emb = C[Xb] # embed the characters into vectors
+  embcat = emb.view(emb.shape[0], -1) # concatenate the vectors
+  # Linear layer
+  hpreact = embcat @ W1 #+ b1 # hidden layer pre-activation
+  # BatchNorm layer
+  # -------------------------------------------------------------
+  bnmeani = hpreact.mean(0, keepdim=True)
+  bnstdi = hpreact.std(0, keepdim=True)
+  hpreact = bngain * (hpreact - bnmeani) / bnstdi + bnbias
+  with torch.no_grad():
+    bnmean_running = 0.999 * bnmean_running + 0.001 * bnmeani
+    bnstd_running = 0.999 * bnstd_running + 0.001 * bnstdi
+  # -------------------------------------------------------------
+  # Non-linearity
+  h = torch.tanh(hpreact) # hidden layer
+  logits = h @ W2 + b2 # output layer
+  loss = F.cross_entropy(logits, Yb) # loss function
+  
+  # backward pass
+  for p in parameters:
+    p.grad = None
+  loss.backward()
+  
+  # update
+  lr = 0.1 if i < 100000 else 0.01 # step learning rate decay
+  for p in parameters:
+    p.data += -lr * p.grad
+
+  # track stats
+  if i % 10000 == 0: # print every once in a while
+    print(f'{i:7d}/{max_steps:7d}: {loss.item():.4f}')
+  lossi.append(loss.log10().item())
 
 plt.plot(lossi)
 
@@ -203,7 +200,25 @@ for _ in range(20):
 
 
 #------------------------------------------------------------------------------
-# 
+# Summary
+
+# Let's train a deeper network
+# The classes we create here are the same API as nn.Module in PyTorch
+
+class Linear:
+  
+  def __init__(self, fan_in, fan_out, bias=True):
+    self.weight = torch.randn((fan_in, fan_out), generator=g) / fan_in**0.5
+    self.bias = torch.zeros(fan_out) if bias else None
+  
+  def __call__(self, x):
+    self.out = x @ self.weight
+    if self.bias is not None:
+      self.out += self.bias
+    return self.out
+  
+  def parameters(self):
+    return [self.weight] + ([] if self.bias is None else [self.bias])
 
 
 
