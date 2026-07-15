@@ -175,6 +175,48 @@ split_loss('val')
 # val 2.1056838035583496
 
 
+#------------------------------------------------------------------------------
+# Sample from the model
+
+g = torch.Generator().manual_seed(2147483647 + 10)
+
+for _ in range(20):
+    
+    out = []
+    context = [0] * block_size # initialize with all...
+    while True:
+        # forward pass the neural net
+        emb = C[torch.tensor([context])]  # (1, block_size, n_embd)
+        h = torch.tanh(emb.view(1, -1) @ W1)
+        logits = h @ W2 + b2
+        probs = F.softmax(logits, dim=1)
+        # sample from the distribution
+        ix = torch.multinomial(probs, num_samples=1, generator=g).item()
+        # shift the context window and track the samples
+        context = context[1:] + [ix]
+        out.append(ix)
+        # if we sample the special '.' token, break
+        if ix == 0:
+            break
+    print(''.join(itos[i] for i in out)) # decode and print the generated word
+
+
+
+#------------------------------------------------------------------------------
+# 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
