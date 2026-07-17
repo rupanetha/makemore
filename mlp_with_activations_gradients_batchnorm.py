@@ -355,8 +355,131 @@ for i,p in enumerate(parameters):
         hy, hx = torch.histogram(t, density=True)
         plt.plot(hx[:-1].detach(), hy.detach())
         legends.append(f'{i} {tuple(p.shape)}')
+plt.legend(legends)
+plt.title('weights gradient distribution');
+
+
+#------------------------------------------------------------------------------
+# Visualize histogram - update data:ratio
+
+plt.figure(figsize=(20, 4))
+legends = []
+for i,p in enumerate(parameters):
+    if p.ndim == 2:
+        plt.plot([ud[j][i] for j in range(len(ud))])
+        legends.append('param %d' % i)
+plt.plot([0, len(ud)], [-3, -3], 'k') # these ratios should be ~1e-3, indicate on plot
 plt.legend(legends);
-plt.title('weights gradient distribution')
+
+
+#------------------------------------------------------------------------------
+
+@torch.no_grad() # this decorator disables gradient tracking
+def split_loss(split):
+    x, y = {
+        'train': (Xtr, Ytr),
+        'val': (Xdev, Ydev),
+        'test': (Xte, Yte),
+    }[split]
+    emb = C[x] # (N, block_size, n_embd)
+    x = emb.view(emb.shape[0], -1) # concat into (N, block_size * n_embd)
+    for layer in layers:
+        x = layer(x)
+    loss = F.cross_entropy(x, y)
+    print(split, loss.item())
+    
+# put layers into eval mode
+for layer in layers:
+    layer.training = False
+split_loss('train')
+split_loss('val')
+
+# train 2.4002976417541504
+# val 2.398247003555298
+
+
+#------------------------------------------------------------------------------
+# Sample from the model
+
+g = torch.Generator().manual_seed(2147483647 + 10)
+
+for _ in range(20):
+    
+    out = []
+    context = [0] * block_size # initialize with all...
+    while True:
+        # forward pass the neural net
+        emb = C[torch.tensor([context])] # (1, block_size, n_embd)
+        x = emb.view(emb.shape[0], -1) # concatenate the vectors
+        for layer in layers:
+            x = layer(x)
+        logits = x
+        probs =F.softmax(logits, dim=1)
+        # sample from the distribution
+        ix = torch.multinomial(probs, num_samples=1, generator=g).item()
+        # shift the context window and track the samples
+        context = context[1:] + [ix]
+        out.append(ix)
+        # if we sample the special '.' token, break
+        if ix == 0:
+            break
+    print(''.join(itos[i] for i in out)) # decode and print the generated word
+        
+# carpah.
+# qarlileif.
+# jmrix.
+# thty.
+# sacansa.
+# jazhnte.
+# dpn.
+# arciigqeiunellaia.
+# chriiv.
+# kalein.
+# dhlm.
+# join.
+# qhinn.
+# sroin.
+# arian.
+# quiqaelogiearyxix.
+# kaeklinsan.
+# ed.
+# ecoia.
+# gtleley.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
