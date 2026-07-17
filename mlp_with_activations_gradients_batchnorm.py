@@ -254,8 +254,41 @@ class BatchNorm1d:
     def parameters(self):
         return [self.gamma, self.beta]
             
+class Tanh:
+    def __call__(self, x):
+        self.out = torch.tanh(x)
+        return self.out
+    def parameters(self):
+        return []
+    
+n_embd = 10 # the dimensionality of the character embedding vectors
+n_hidden = 100 # the number of neurons in the hidden layer of MLP
+g = torch.Generator().manual_seed(2147483647) 
+
+C = torch.randn((vocab_size, n_embd),            generator=g)
+layers = [
+  Linear(n_embd * block_size, n_hidden, bias=False), BatchNorm1d(n_hidden), Tanh(),
+  Linear(           n_hidden, n_hidden, bias=False), BatchNorm1d(n_hidden), Tanh(),
+  Linear(           n_hidden, n_hidden, bias=False), BatchNorm1d(n_hidden), Tanh(),
+  Linear(           n_hidden, n_hidden, bias=False), BatchNorm1d(n_hidden), Tanh(),
+  Linear(           n_hidden, n_hidden, bias=False), BatchNorm1d(n_hidden), Tanh(),
+  Linear(           n_hidden, vocab_size, bias=False), BatchNorm1d(vocab_size),
+]
 
 
+with torch.no_grad():
+    # last layer: make loss confident
+    layers[-1].gamma *= 0.1 
+    # layers[-1].weighr *= 0.1
+    # all other layers: apply gain
+    for layer in layers[:1]:
+        if isinstance(layer, Linear):
+            layer.weight *= 1.0 # 5/3
+            
+parameters = [C] + [p for layer in layers for p in layer.parameters()]
+print(sum(p.nelement() for p in parameters)) # number of parameters in total
+for p in parameters:
+    p.requires_grad = True
 
 
 
