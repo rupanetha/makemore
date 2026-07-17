@@ -173,33 +173,6 @@ split_loss('val')
 
 
 #------------------------------------------------------------------------------
-# Sample from the model
-
-g = torch.Generator().manual_seed(2147483647 + 10)
-
-for _ in range(20):
-    
-    out = []
-    context = [0] * block_size # initialize with all...
-    while True:
-        # forward pass the neural net
-        emb = C[torch.tensor([context])]  # (1, block_size, n_embd)
-        h = torch.tanh(emb.view(1, -1) @ W1)
-        logits = h @ W2 + b2
-        probs = F.softmax(logits, dim=1)
-        # sample from the distribution
-        ix = torch.multinomial(probs, num_samples=1, generator=g).item()
-        # shift the context window and track the samples
-        context = context[1:] + [ix]
-        out.append(ix)
-        # if we sample the special '.' token, break
-        if ix == 0:
-            break
-    print(''.join(itos[i] for i in out)) # decode and print the generated word
-
-
-
-#------------------------------------------------------------------------------
 # Summary
 
 # Let's train a deeper network
@@ -289,6 +262,65 @@ parameters = [C] + [p for layer in layers for p in layer.parameters()]
 print(sum(p.nelement() for p in parameters)) # number of parameters in total
 for p in parameters:
     p.requires_grad = True
+# 47024
+
+
+#------------------------------------------------------------------------------
+# Optimization
+
+max_steps = 200000
+batch_size = 32
+lossi = []
+ud = []
+
+for i in range(max_steps):
+  
+  # minibatch construct
+  ix = torch.randint(0, Xtr.shape[0], (batch_size,), generator=g)
+  Xb, Yb = Xtr[ix], Ytr[ix] # batch X,Y
+  
+  # forward pass
+  emb = C[Xb] # embed the characters into vectors
+  x = emb.view(emb.shape[0], -1) # concatenate the vectors
+  for layer in layers:
+    x = layer(x)
+  loss = F.cross_entropy(x, Yb) # loss function
+  
+  # backward pass
+  for layer in layers:
+    layer.out.retain_grad() # AFTER_DEBUG: would take out retain_graph
+  for p in parameters:
+    p.grad = None
+  loss.backward()
+  
+  # update
+  lr = 0.1 if i < 150000 else 0.01 # step learning rate decay
+  for p in parameters:
+    p.data += -lr * p.grad
+
+  # track stats
+  if i % 10000 == 0: # print every once in a while
+    print(f'{i:7d}/{max_steps:7d}: {loss.item():.4f}')
+  lossi.append(loss.log10().item())
+  with torch.no_grad():
+    ud.append([((lr*p.grad).std() / p.data.std()).log10().item() for p in parameters])
+
+  if i >= 1000:
+    break
+
+# 0/ 200000: 3.2870
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
