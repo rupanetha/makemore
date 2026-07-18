@@ -448,47 +448,98 @@ for _ in range(20):
 
 
 
+#------------------------------------------------------------------------------
+# BatchNorm forward pass as a widget
+
+from ipywidgets import interact, interactive, fixed, interact_manual
+import ipywidgets as widgets
+import scipy.stats as stats
+import numpy as np
+
+def normshow(x0):
+  
+  g = torch.Generator().manual_seed(2147483647+1)
+  x = torch.randn(5, generator=g) * 5
+  x[0] = x0 # override the 0th example with the slider
+  mu = x.mean()
+  sig = x.std()
+  y = (x - mu)/sig
+
+  plt.figure(figsize=(10, 5))
+  # plot 0
+  plt.plot([-6,6], [0,0], 'k')
+  # plot the mean and std
+  xx = np.linspace(-6, 6, 100)
+  plt.plot(xx, stats.norm.pdf(xx, mu, sig), 'b')
+  xx = np.linspace(-6, 6, 100)
+  plt.plot(xx, stats.norm.pdf(xx, 0, 1), 'r')
+  # plot little lines connecting input and output
+  for i in range(len(x)):
+    plt.plot([x[i],y[i]], [1, 0], 'k', alpha=0.2)
+  # plot the input and output values
+  plt.scatter(x.data, torch.ones_like(x).data, c='b', s=100)
+  plt.scatter(y.data, torch.zeros_like(y).data, c='r', s=100)
+  plt.xlim(-6, 6)
+  # title
+  plt.title('input mu %.2f std %.2f' % (mu, sig))
+
+interact(normshow, x0=(-30,30,0.5));
 
 
+#------------------------------------------------------------------------------
+# Linear: activation statistics of forward and backward pass
+
+g = torch.Generator().manual_seed(2147483647)
+
+a = torch.randn((1000,1), requires_grad=True, generator=g)          # a.grad = b.T @ c.grad
+b = torch.randn((1000,1000), requires_grad=True, generator=g)       # b.grad = c.grad @ a.T
+c = b @ a
+loss = torch.randn(1000, generator=g) @ c
+a.retain_grad()
+b.retain_grad()
+c.retain_grad()
+loss.backward()
+print('a std:', a.std().item())
+print('b std:', b.std().item())
+print('c std:', c.std().item())
+print('-----')
+print('c grad std:', c.grad.std().item())
+print('a grad std:', a.grad.std().item())
+print('b grad std:', b.grad.std().item())
 
 
+#------------------------------------------------------------------------------
+# Linear + BatchNorm: activation statistics of forward and backward pass
+
+g = torch.Generator().manual_seed(2147483647)
+
+n = 1000
+# linear layer ---
+inp = torch.randn(n, requires_grad=True, generator=g)
+w = torch.randn((n, n), requires_grad=True, generator=g) # / n**0.5
+x = w @ inp
+# bn layer ---
+xmean = x.mean()
+xvar = x.var()
+out = (x - xmean) / torch.sqrt(xvar + 1e-5)
+# ----
+loss = out @ torch.randn(n, generator=g)
+inp.retain_grad()
+x.retain_grad()
+w.retain_grad()
+out.retain_grad()
+loss.backward()
+
+print('inp std: ', inp.std().item())
+print('w std: ', w.std().item())
+print('x std: ', x.std().item())
+print('out std: ', out.std().item())
+print('------')
+print('out grad std: ', out.grad.std().item())
+print('x grad std: ', x.grad.std().item())
+print('w grad std: ', w.grad.std().item())
+print('inp grad std: ', inp.grad.std().item())
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+import sys
+!{sys.executable} -m pip show ipywidgets
