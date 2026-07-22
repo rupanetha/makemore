@@ -144,11 +144,42 @@ loss.backward()
 loss
 
 
+#------------------------------------------------------------------------------
+# Exercise 1: backprop through the whole thing manually, 
+# backpropagating through exactly all of the variables 
+# as they are defined in the forward pass above, one by one
 
 
+# -----------------
+# YOUR CODE HERE :)
+# -----------------
 
-
-
+# cmp('logprobs', dlogprobs, logprobs)
+# cmp('probs', dprobs, probs)
+# cmp('counts_sum_inv', dcounts_sum_inv, counts_sum_inv)
+# cmp('counts_sum', dcounts_sum, counts_sum)
+# cmp('counts', dcounts, counts)
+# cmp('norm_logits', dnorm_logits, norm_logits)
+# cmp('logit_maxes', dlogit_maxes, logit_maxes)
+# cmp('logits', dlogits, logits)
+# cmp('h', dh, h)
+# cmp('W2', dW2, W2)
+# cmp('b2', db2, b2)
+# cmp('hpreact', dhpreact, hpreact)
+# cmp('bngain', dbngain, bngain)
+# cmp('bnbias', dbnbias, bnbias)
+# cmp('bnraw', dbnraw, bnraw)
+# cmp('bnvar_inv', dbnvar_inv, bnvar_inv)
+# cmp('bnvar', dbnvar, bnvar)
+# cmp('bndiff2', dbndiff2, bndiff2)
+# cmp('bndiff', dbndiff, bndiff)
+# cmp('bnmeani', dbnmeani, bnmeani)
+# cmp('hprebn', dhprebn, hprebn)
+# cmp('embcat', dembcat, embcat)
+# cmp('W1', dW1, W1)
+# cmp('b1', db1, b1)
+# cmp('emb', demb, emb)
+# cmp('C', dC, C)
 
 
 
