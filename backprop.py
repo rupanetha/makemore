@@ -206,6 +206,15 @@ print(loss_fast.item(), 'diff:', (loss_fast - loss).item())
 
 
 
+#------------------------------------------------------------------------------
+# backward pass
+
+# -----------------
+# YOUR CODE HERE :)
+dlogits = None # TODO. my solution is 3 lines
+# -----------------
+
+#cmp('logits', dlogits, logits) # I can only get approximate to be true, my maxdiff is 6e-9
 
 
 
