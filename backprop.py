@@ -263,6 +263,90 @@ dhprebn = None # TODO. my solution is 1 (long) line
 cmp('hprebn', dhprebn, hprebn) # I can only get approximate to be true, my maxdiff is 9e-10
 
 
+#------------------------------------------------------------------------------
+# Exercise 4: putting it all together!
+# Train the MLP neural net with your own backward pass
+
+# init
+n_embd = 10 # the dimensionality of the character embedding vectors
+n_hidden = 200 # the number of neurons in the hidden layer of the MLP
+
+g = torch.Generator().manual_seed(2147483647) # for reproducibility
+C  = torch.randn((vocab_size, n_embd),            generator=g)
+# Layer 1
+W1 = torch.randn((n_embd * block_size, n_hidden), generator=g) * (5/3)/((n_embd * block_size)**0.5)
+b1 = torch.randn(n_hidden,                        generator=g) * 0.1
+# Layer 2
+W2 = torch.randn((n_hidden, vocab_size),          generator=g) * 0.1
+b2 = torch.randn(vocab_size,                      generator=g) * 0.1
+# BatchNorm parameters
+bngain = torch.randn((1, n_hidden))*0.1 + 1.0
+bnbias = torch.randn((1, n_hidden))*0.1
+
+parameters = [C, W1, b1, W2, b2, bngain, bnbias]
+print(sum(p.nelement() for p in parameters)) # number of parameters in total
+for p in parameters:
+  p.requires_grad = True
+
+# same optimization as last time
+max_steps = 200000
+batch_size = 32
+n = batch_size # convenience
+lossi = []
+
+# use this context manager for efficiency once your backward pass is written (TODO)
+#with torch.no_grad():
+
+# kick off optimization
+for i in range(max_steps):
+
+  # minibatch construct
+  ix = torch.randint(0, Xtr.shape[0], (batch_size,), generator=g)
+  Xb, Yb = Xtr[ix], Ytr[ix] # batch X,Y
+
+  # forward pass
+  emb = C[Xb] # embed the characters into vectors
+  embcat = emb.view(emb.shape[0], -1) # concatenate the vectors
+  # Linear layer
+  hprebn = embcat @ W1 + b1 # hidden layer pre-activation
+  # BatchNorm layer
+  # -------------------------------------------------------------
+  bnmean = hprebn.mean(0, keepdim=True)
+  bnvar = hprebn.var(0, keepdim=True, unbiased=True)
+  bnvar_inv = (bnvar + 1e-5)**-0.5
+  bnraw = (hprebn - bnmean) * bnvar_inv
+  hpreact = bngain * bnraw + bnbias
+  # -------------------------------------------------------------
+  # Non-linearity
+  h = torch.tanh(hpreact) # hidden layer
+  logits = h @ W2 + b2 # output layer
+  loss = F.cross_entropy(logits, Yb) # loss function
+
+  # backward pass
+  for p in parameters:
+    p.grad = None
+  loss.backward() # use this for correctness comparisons, delete it later!
+
+  # manual backprop! #swole_doge_meme
+  # -----------------
+  # YOUR CODE HERE :)
+  dC, dW1, db1, dW2, db2, dbngain, dbnbias = None, None, None, None, None, None, None
+  grads = [dC, dW1, db1, dW2, db2, dbngain, dbnbias]
+  # -----------------
+
+  # update
+  lr = 0.1 if i < 100000 else 0.01 # step learning rate decay
+  for p, grad in zip(parameters, grads):
+    p.data += -lr * p.grad # old way of cheems doge (using PyTorch grad from .backward())
+    #p.data += -lr * grad # new way of swole doge TODO: enable
+
+  # track stats
+  if i % 10000 == 0: # print every once in a while
+    print(f'{i:7d}/{max_steps:7d}: {loss.item():.4f}')
+  lossi.append(loss.log10().item())
+
+  if i >= 100: # TODO: delete early breaking when you're ready to train the full net
+    break
 
 
 
