@@ -369,9 +369,33 @@ with torch.no_grad():
 
 
 #------------------------------------------------------------------------------
+# evaluate train and val loss
+
+@torch.no_grad() # this decorator disables gradient tracking
+def split_loss(split):
+  x,y = {
+    'train': (Xtr, Ytr),
+    'val': (Xdev, Ydev),
+    'test': (Xte, Yte),
+  }[split]
+  emb = C[x] # (N, block_size, n_embd)
+  embcat = emb.view(emb.shape[0], -1) # concat into (N, block_size * n_embd)
+  hpreact = embcat @ W1 + b1
+  hpreact = bngain * (hpreact - bnmean) * (bnvar + 1e-5)**-0.5 + bnbias
+  h = torch.tanh(hpreact) # (N, n_hidden)
+  logits = h @ W2 + b2 # (N, vocab_size)
+  loss = F.cross_entropy(logits, y)
+  print(split, loss.item())
+
+split_loss('train')
+split_loss('val')
+
+# I achieved:
+# train 2.0718822479248047
+# val 2.1162495613098145
 
 
-
+#------------------------------------------------------------------------------
 
 
 
