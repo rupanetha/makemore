@@ -396,8 +396,29 @@ split_loss('val')
 
 
 #------------------------------------------------------------------------------
+# sample from the model
+g = torch.Generator().manual_seed(2147483647 + 10)
 
-
-
+for _ in range(20):
+    
+    out = []
+    context = [0] * block_size # initialize with all ...
+    while True:
+      # forward pass
+      emb = C[torch.tensor([context])] # (1,block_size,d)      
+      embcat = emb.view(emb.shape[0], -1) # concat into (N, block_size * n_embd)
+      hpreact = embcat @ W1 + b1
+      hpreact = bngain * (hpreact - bnmean) * (bnvar + 1e-5)**-0.5 + bnbias
+      h = torch.tanh(hpreact) # (N, n_hidden)
+      logits = h @ W2 + b2 # (N, vocab_size)
+      # sample
+      probs = F.softmax(logits, dim=1)
+      ix = torch.multinomial(probs, num_samples=1, generator=g).item()
+      context = context[1:] + [ix]
+      out.append(ix)
+      if ix == 0:
+        break
+    
+    print(''.join(itos[i] for i in out))
 
 
