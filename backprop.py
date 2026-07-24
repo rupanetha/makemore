@@ -349,6 +349,29 @@ for i in range(max_steps):
     break
 
 
+#------------------------------------------------------------------------------
+# useful for checking your gradients
+# for p,g in zip(parameters, grads):
+#   cmp(str(tuple(p.shape)), g, p)
+
+
+#------------------------------------------------------------------------------
+# calibrate the batch norm at the end of training
+
+with torch.no_grad():
+  # pass the training set through
+  emb = C[Xtr]
+  embcat = emb.view(emb.shape[0], -1)
+  hpreact = embcat @ W1 + b1
+  # measure the mean/std over the entire training set
+  bnmean = hpreact.mean(0, keepdim=True)
+  bnvar = hpreact.var(0, keepdim=True, unbiased=True)
+
+
+#------------------------------------------------------------------------------
+
+
+
 
 
 
