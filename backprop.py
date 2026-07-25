@@ -239,12 +239,11 @@ print(loss_fast.item(), 'diff:', (loss_fast - loss).item())
 #------------------------------------------------------------------------------
 # backward pass
 
-# -----------------
-# YOUR CODE HERE :)
-dlogits = None # TODO. my solution is 3 lines
-# -----------------
+dlogits = F.softmax(logits, 1)
+dlogits[range(n), Yb] -= 1
+dlogits /= n
 
-#cmp('logits', dlogits, logits) # I can only get approximate to be true, my maxdiff is 6e-9
+cmp('logits', dlogits, logits) # I can only get approximate to be true, my maxdiff is 6e-9
 
 
 #------------------------------------------------------------------------------
