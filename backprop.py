@@ -285,16 +285,13 @@ print('max diff:', (hpreact_fast - hpreact).abs().max())
 # calculate dhprebn given dhpreact (i.e. backprop through the batchnorm)
 # (you'll also need to use some of the variables from the forward pass up above)
 
-# -----------------
-# YOUR CODE HERE :)
-dhprebn = None # TODO. my solution is 1 (long) line
-# -----------------
+dhprebn = bngain*bnvar_inv/n * (n*dhpreact - dhpreact.sum(0) - n/(n-1)*bnraw*(dhpreact*bnraw).sum(0))
 
 cmp('hprebn', dhprebn, hprebn) # I can only get approximate to be true, my maxdiff is 9e-10
 
 
 #------------------------------------------------------------------------------
-# Exercise 4: putting it all together!
+#  Exercise 4: putting it all together!
 # Train the MLP neural net with your own backward pass
 
 # init
@@ -325,58 +322,80 @@ n = batch_size # convenience
 lossi = []
 
 # use this context manager for efficiency once your backward pass is written (TODO)
-#with torch.no_grad():
+with torch.no_grad():
 
-# kick off optimization
-for i in range(max_steps):
+  # kick off optimization
+  for i in range(max_steps):
 
-  # minibatch construct
-  ix = torch.randint(0, Xtr.shape[0], (batch_size,), generator=g)
-  Xb, Yb = Xtr[ix], Ytr[ix] # batch X,Y
+    # minibatch construct
+    ix = torch.randint(0, Xtr.shape[0], (batch_size,), generator=g)
+    Xb, Yb = Xtr[ix], Ytr[ix] # batch X,Y
 
-  # forward pass
-  emb = C[Xb] # embed the characters into vectors
-  embcat = emb.view(emb.shape[0], -1) # concatenate the vectors
-  # Linear layer
-  hprebn = embcat @ W1 + b1 # hidden layer pre-activation
-  # BatchNorm layer
-  # -------------------------------------------------------------
-  bnmean = hprebn.mean(0, keepdim=True)
-  bnvar = hprebn.var(0, keepdim=True, unbiased=True)
-  bnvar_inv = (bnvar + 1e-5)**-0.5
-  bnraw = (hprebn - bnmean) * bnvar_inv
-  hpreact = bngain * bnraw + bnbias
-  # -------------------------------------------------------------
-  # Non-linearity
-  h = torch.tanh(hpreact) # hidden layer
-  logits = h @ W2 + b2 # output layer
-  loss = F.cross_entropy(logits, Yb) # loss function
+    # forward pass
+    emb = C[Xb] # embed the characters into vectors
+    embcat = emb.view(emb.shape[0], -1) # concatenate the vectors
+    # Linear layer
+    hprebn = embcat @ W1 + b1 # hidden layer pre-activation
+    # BatchNorm layer
+    # -------------------------------------------------------------
+    bnmean = hprebn.mean(0, keepdim=True)
+    bnvar = hprebn.var(0, keepdim=True, unbiased=True)
+    bnvar_inv = (bnvar + 1e-5)**-0.5
+    bnraw = (hprebn - bnmean) * bnvar_inv
+    hpreact = bngain * bnraw + bnbias
+    # -------------------------------------------------------------
+    # Non-linearity
+    h = torch.tanh(hpreact) # hidden layer
+    logits = h @ W2 + b2 # output layer
+    loss = F.cross_entropy(logits, Yb) # loss function
 
-  # backward pass
-  for p in parameters:
-    p.grad = None
-  loss.backward() # use this for correctness comparisons, delete it later!
+    # backward pass
+    for p in parameters:
+      p.grad = None
+    #loss.backward() # use this for correctness comparisons, delete it later!
 
-  # manual backprop! #swole_doge_meme
-  # -----------------
-  # YOUR CODE HERE :)
-  dC, dW1, db1, dW2, db2, dbngain, dbnbias = None, None, None, None, None, None, None
-  grads = [dC, dW1, db1, dW2, db2, dbngain, dbnbias]
-  # -----------------
+    # manual backprop! #swole_doge_meme
+    # -----------------
+    dlogits = F.softmax(logits, 1)
+    dlogits[range(n), Yb] -= 1
+    dlogits /= n
+    # 2nd layer backprop
+    dh = dlogits @ W2.T
+    dW2 = h.T @ dlogits
+    db2 = dlogits.sum(0)
+    # tanh
+    dhpreact = (1.0 - h**2) * dh
+    # batchnorm backprop
+    dbngain = (bnraw * dhpreact).sum(0, keepdim=True)
+    dbnbias = dhpreact.sum(0, keepdim=True)
+    dhprebn = bngain*bnvar_inv/n * (n*dhpreact - dhpreact.sum(0) - n/(n-1)*bnraw*(dhpreact*bnraw).sum(0))
+    # 1st layer
+    dembcat = dhprebn @ W1.T
+    dW1 = embcat.T @ dhprebn
+    db1 = dhprebn.sum(0)
+    # embedding
+    demb = dembcat.view(emb.shape)
+    dC = torch.zeros_like(C)
+    for k in range(Xb.shape[0]):
+      for j in range(Xb.shape[1]):
+        ix = Xb[k,j]
+        dC[ix] += demb[k,j]
+    grads = [dC, dW1, db1, dW2, db2, dbngain, dbnbias]
+    # -----------------
 
-  # update
-  lr = 0.1 if i < 100000 else 0.01 # step learning rate decay
-  for p, grad in zip(parameters, grads):
-    p.data += -lr * p.grad # old way of cheems doge (using PyTorch grad from .backward())
-    #p.data += -lr * grad # new way of swole doge TODO: enable
+    # update
+    lr = 0.1 if i < 100000 else 0.01 # step learning rate decay
+    for p, grad in zip(parameters, grads):
+      #p.data += -lr * p.grad # old way of cheems doge (using PyTorch grad from .backward())
+      p.data += -lr * grad # new way of swole doge TODO: enable
 
-  # track stats
-  if i % 10000 == 0: # print every once in a while
-    print(f'{i:7d}/{max_steps:7d}: {loss.item():.4f}')
-  lossi.append(loss.log10().item())
+    # track stats
+    if i % 10000 == 0: # print every once in a while
+      print(f'{i:7d}/{max_steps:7d}: {loss.item():.4f}')
+    lossi.append(loss.log10().item())
 
-  if i >= 100: # TODO: delete early breaking when you're ready to train the full net
-    break
+  #   if i >= 100: # TODO: delete early breaking when you're ready to train the full net
+  #     break
 
 
 #------------------------------------------------------------------------------
